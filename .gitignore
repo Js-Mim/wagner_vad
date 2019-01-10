@@ -11,6 +11,7 @@ Thumbs.db
 
 # Py-Generated files #
 ######################
+*.swp
 *.pyc
 *.py~
 *.md~

@@ -15,10 +15,12 @@ import numpy as np
 import torch
 from sklearn.metrics import precision_recall_fscore_support as prf
 from tqdm import tqdm
-from nn_modules import cls_fe_dft, cls_pcen, cls_grus, cls_fnns
+from nn_modules import cls_fe_dft, cls_pcen, cls_grus, cls_fnns, cls_fe_label_smoother
 from tools import helpers, visualize
 from torch.optim.lr_scheduler import StepLR
 from tools.experiment_settings import exp_settings
+from matplotlib import pylab as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def build_model(flag='training'):
@@ -35,8 +37,7 @@ def build_model(flag='training'):
     mel_analysis = cls_fe_dft.MelFilterbank(exp_settings['fs'], exp_settings['n_mel'],
                                             exp_settings['ft_size'])
     # Learnable per-channel energy normalization
-    pcen = cls_pcen.PCEN(exp_settings['n_mel'], exp_settings['T'], sr=exp_settings['fs'], t=exp_settings['t_pcen'],
-                         hop_size=exp_settings['hop_size'])
+    pcen = cls_pcen.PCEN(exp_settings['n_mel'], exp_settings['T'])
     # Bi-directional GRU Encoder - GRU Decoder
     gru_enc = cls_grus.BiGRUEncoder(batch_size, exp_settings['T'], exp_settings['n_mel'])
     gru_dec = cls_grus.GRUDecoder(batch_size, exp_settings['T'], exp_settings['n_mel']*2)
@@ -44,6 +45,9 @@ def build_model(flag='training'):
     fc_layer = cls_fnns.FNNClassifier(exp_settings['classification_dim'],
                                       exp_settings['n_mel']*2, exp_settings['n_mel'])
 
+    # Label smoother
+    label_conv = cls_fe_label_smoother.ClassLabelSmoother(ft_size=exp_settings['ft_size'],
+                                                          hop_size=exp_settings['hop_size'])
     if flag == 'testing':
         print('--- Loading Model ---')
         pcen.load_state_dict(torch.load('results/vanillaen_pcen_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
@@ -57,8 +61,9 @@ def build_model(flag='training'):
         gru_enc = gru_enc.cuda()
         gru_dec = gru_dec.cuda()
         fc_layer = fc_layer.cuda()
+        label_conv = label_conv.cuda()
 
-    return dft_analysis, mel_analysis, pcen, gru_enc, gru_dec, fc_layer
+    return dft_analysis, mel_analysis, pcen, gru_enc, gru_dec, fc_layer, label_conv
 
 
 def perform_training():
@@ -74,10 +79,9 @@ def perform_training():
     d_p_length_samples = exp_settings['d_p_length'] * exp_settings['fs']  # Length in samples
 
     # Initialize NN modules
-    sigmoid = torch.nn.Sigmoid()            # Label helper!
     dropout = torch.nn.Dropout(exp_settings['drp_rate']).cuda()
     win_viz, _ = visualize.init_visdom()    # Web loss plotting
-    dft_analysis, mel_analysis, pcen, gru_enc, gru_dec, fc_layer = build_model(flag='training')
+    dft_analysis, mel_analysis, pcen, gru_enc, gru_dec, fc_layer, label_smoother = build_model(flag='training')
 
     # Criterion
     bce_func = torch.nn.BCEWithLogitsLoss(size_average=True)
@@ -102,7 +106,8 @@ def perform_training():
     for epoch in range(1, exp_settings['epochs'] + 1):
         # Validation
         if not epoch == 1:
-            cls_err = perform_validation([dft_analysis, mel_analysis, pcen, gru_enc, gru_dec, fc_layer])
+            cls_err = perform_validation([dft_analysis, mel_analysis, pcen,
+                                          gru_enc, gru_dec, fc_layer, label_smoother])
 
             if prv_cls_error - cls_err > 0:
                 # Increase learning rate
@@ -115,6 +120,7 @@ def perform_training():
                     torch.save(gru_enc.state_dict(), 'results/vanillaen_gru_enc_bs_drp.pytorch')
                     torch.save(gru_dec.state_dict(), 'results/vanillaen_gru_dec_bs_drp.pytorch')
                     torch.save(fc_layer.state_dict(), 'results/vanillaen_cls_bs_drp.pytorch')
+
             else:
                 # Decrease learning rate
                 scheduler_n.step()
@@ -152,9 +158,8 @@ def perform_training():
             _, vad_prob = fc_layer.forward(h_dec, mel_mag_pr)
 
             # Target data preparation
-            y_real, y_imag = dft_analysis.forward(y_cuda)          # Target labels, time-specific, STFT smoothed!
-            ysig = sigmoid(torch.sqrt(y_real.pow(2) + y_imag.pow(2))[:, :, 0:1])
-            vad_true = torch.autograd.Variable((ysig * ysig.gt(0.55).float()).data, requires_grad=True).cuda()
+            y_true = label_smoother.forward(y_cuda).detach()
+            vad_true = torch.autograd.Variable(y_true.data, requires_grad=True).cuda()
 
             # Loss
             loss = bce_func(vad_prob, vad_true)
@@ -217,9 +222,8 @@ def perform_validation(nn_list):
             .reshape(exp_settings['batch_size']*exp_settings['T'], 1)
 
         # Target data preparation
-        y_real, y_imag = nn_list[0].forward(y_cuda)          # Target labels, time-specific, STFT smoothed!
-        ysig = sigmoid(torch.sqrt(y_real.pow(2) + y_imag.pow(2))[:, :, 0])
-        vad_true = ysig.gt(0.55).float().data.cpu().numpy().reshape(exp_settings['batch_size']*exp_settings['T'], 1)
+        y_true = nn_list[6].forward(y_cuda).detach()[:, :, 0]
+        vad_true = y_true.gt(0.51).float().data.cpu().numpy().reshape(exp_settings['batch_size']*exp_settings['T'], 1)
 
         if batch == 0:
             out_prob = vad_prob
@@ -280,12 +284,11 @@ def perform_testing():
         # Classifier
         mel_filt, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
         vad_prob = sigmoid(vad_prob)
-        vad_prob = vad_prob.gt(0.5).float().data.cpu().numpy()[0, :, 0]
+        vad_prob = vad_prob.gt(0.51).float().data.cpu().numpy()[0, :, 0]
 
         # Target data preparation
-        y_real, y_imag = nn_list[0].forward(y_cuda)          # Target labels, time-specific, STFT smoothed!
-        ysig = sigmoid(torch.norm(torch.cat((y_real, y_imag), 0), 2, dim=0).unsqueeze(0)[:, :, 0:1])
-        vad_true = ysig.gt(0.55).float().data.cpu().numpy()[0, :, 0]
+        y_true = nn_list[6].forward(y_cuda).detach()
+        vad_true = y_true.gt(0.51).float().data.cpu().numpy()[0, :, 0]
 
         """
         # A hasty example for plotting some of the results
@@ -317,6 +320,87 @@ def perform_testing():
     return None
 
 
+def perform_cluster_visualization():
+    print('---Performing Evaluation---')
+    nn_list = list(build_model(flag='testing'))
+    data_dict = helpers.csv_to_dict(training=False)
+    keys = list(data_dict.keys())
+    testing_key = keys[0]  # Validate on the second composer
+    print('Testing on: ' + ' '.join(testing_key))
+    # Get data
+    x, y, fs, singer_list = helpers.fetch_data_with_singer_ids(data_dict, testing_key)
+    x *= 0.99 / np.max(np.abs(x))
+
+    sigmoid = torch.nn.Sigmoid()  # Label helper!
+    d_p_length_samples = exp_settings['d_p_length'] * exp_settings['fs']  # Length in samples
+
+    number_of_data_points = len(x) // d_p_length_samples
+    for data_point in tqdm(range(number_of_data_points)):
+        # Generate data
+        x_d_p = x[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
+        y_d_p = y[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
+
+        # Reshape data
+        x_d_p = x_d_p.reshape(1, d_p_length_samples)
+        y_d_p = y_d_p.reshape(1, d_p_length_samples)
+        x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p).cuda(), requires_grad=False).float().detach()
+        y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p).cuda(), requires_grad=False).float().detach()
+
+        # Forward analysis pass: Input data
+        x_real, x_imag = nn_list[0].forward(x_cuda)
+        # Magnitude computation
+        mag = torch.norm(torch.cat((x_real, x_imag), 0), 2, dim=0).unsqueeze(0)
+        # Mel analysis
+        mel_mag = torch.autograd.Variable(nn_list[1].forward(mag).data, requires_grad=False)
+
+        # Learned normalization
+        mel_mag_pr = nn_list[2].forward(mel_mag)
+        # GRUs
+        h_enc = nn_list[3].forward(mel_mag_pr)
+        h_dec = nn_list[4].forward(h_enc)
+        # Classifier
+        mel_filt, vad_prob, cl_space = nn_list[5].forward(h_dec, mel_mag_pr, ld_space=True)
+        vad_prob = sigmoid(vad_prob)
+        vad_prob = vad_prob.gt(0.5).float().data.cpu().numpy()[0, :, 0]
+        cl_space = cl_space.data.cpu().numpy()[0, :]
+
+        # Target data preparation
+        y_true = nn_list[6].forward(y_cuda).detach()
+        vad_true = y_true.gt(0.51).float().data.cpu().numpy()[0, :, 0]
+
+        if data_point == 0:
+            out_space = cl_space
+            out_true_prob = vad_true
+            out_vad_prob = vad_prob
+        else:
+            out_space = np.vstack((out_space, cl_space))
+            out_true_prob = np.hstack((out_true_prob, vad_true))
+            out_vad_prob = np.hstack((out_vad_prob, vad_prob))
+
+    # Scatter plot
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    posistive_examples = np.where(out_true_prob == 1)[0]
+    negative_examples = np.where(out_true_prob == 0)[0]
+    ax.scatter(out_space[posistive_examples, 0],
+               out_space[posistive_examples, 1],
+               out_space[posistive_examples, 2],
+               c='red', s=0.5, vmax=1, vmin=-1,
+               label='Singing Voice', alpha=0.7)
+    ax.scatter(out_space[negative_examples, 0],
+               out_space[negative_examples, 1],
+               out_space[negative_examples, 2],
+               c='black', s=0.5, vmax=1, vmin=-1,
+               label='No Singing Voice', alpha=0.7)
+    ax.legend()
+    ax.set_title('Low Dimensional Latent Space')
+    ax.set_xlabel('x-axis')
+    ax.set_ylabel('y-axis')
+    ax.set_zlabel('z-axis')
+    plt.show(block=False)
+    return None
+
+
 if __name__ == "__main__":
     np.random.seed(218)
     torch.manual_seed(218)
@@ -324,9 +408,12 @@ if __name__ == "__main__":
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
     # Training
-    perform_training()
+    #perform_training()
 
     # Testing
-    #perform_testing()
+    perform_testing()
+
+    # Clustering tests
+    #perform_cluster_visualization()
 
 # EOF

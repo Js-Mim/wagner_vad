@@ -145,6 +145,69 @@ def fetch_data(data_annotations, key):
     return x, y, fs
 
 
+def fetch_data_with_singer_ids(data_annotations, key):
+    """
+        A function to return data used for training
+        given a dictionary of the Wagner dataset.
+        Compared to the "fetch_data" function this returns
+        the labels for multi-class scenario.
+        Args:
+            data_annotations  :  (dict)  Dictionary of the following (nested) items:
+                                             - 'recording'    : Name of the recording
+                                             - 'singer'       : Name of the singer
+                                             - 'start_time'   : Starting time stamp
+                                             - 'stop_time'    : Ending time stamp
+                                             - 'wav_path'     : The path to the wav file
+            key               :  (str)   String for accessing a composer, or a list of strings
+                                         for obtaining the data from multiple composers.
+    """
+    def _fetch_data(data, a_key):
+        # Get the path, the singer ids, and read the waveform
+        wav_file_path = data[a_key]['wav_path']
+        singer_id = data[a_key]['singer']
+        singer_list = []
+        for singer in singer_id:
+            if singer not in singer_list:
+                singer_list.append(singer)
+        singer_list = sorted(singer_list)
+        out_x, out_fs = io.AudioIO.wavRead(wav_file_path, mono=True)
+
+        # Generate time-domain labels
+        pointers_in = data[a_key]['start_time']
+        pointers_out = data[a_key]['stop_time']
+        if not len(pointers_in) == len(pointers_out):
+            raise AttributeError("Unequal number of pointers. Problems may occur...")
+        if not len(pointers_in) == len(singer_id):
+            raise AttributeError("Unequal number of pointers and singer ids. Problems may occur...")
+
+        out_y = np.zeros((out_x.shape[0], len(singer_list) + 1))
+        out_y[:, 0] = 1.
+
+        for p_indx in range(len(pointers_in)):
+            c_pin = int(np.floor(pointers_in[p_indx] * out_fs))
+            c_pout = int(np.floor(pointers_out[p_indx] * out_fs))
+            singer_class = [class_index for class_index, singer_element in
+                            enumerate(singer_list) if singer_element == singer_id[p_indx]][0] + 1
+            out_y[c_pin:c_pout, 0] = 0.
+            out_y[c_pin:c_pout, singer_class] = 1.
+
+        return out_x, out_y, out_fs, singer_list
+
+    if type(key) == list:
+        print('Number of key entries: ' + str(len(key)))
+        print('Fetching: ' + key[0])
+        x, y, fs, list_of_singers = _fetch_data(data_annotations, key[0])
+        for key_item in key[1:]:
+            print('Fetching: ' + key_item)
+            x_b, y_b, _, _ = _fetch_data(data_annotations, key_item)
+            x = np.hstack((x, x_b))
+            y = np.hstack((y, y_b))
+    else:
+        x, y, fs, list_of_singers = _fetch_data(data_annotations, key)
+
+    return x, y, fs, list_of_singers
+
+
 def build_wagner_vocabulary(data_annotations, keys_list):
     """
         A function to build a vocabulary using the lyrics
@@ -156,7 +219,7 @@ def build_wagner_vocabulary(data_annotations, keys_list):
                                              - 'start_time'   : Starting time stamp
                                              - 'stop_time'    : Ending time stamp
                                              - 'wav_path'     : The path to the wav file
-            keys_list         :  (lsit)  List containing strings for each composer.
+            keys_list         :  (list)  List containing strings for each composer.
     """
     vocab = list('SOS')
     vocab.append('EOS')
@@ -208,7 +271,9 @@ if __name__ == '__main__':
     # Build vocabulary
     #word2indx, indx2word = build_wagner_vocabulary(data_dict, keys)
     # Get training/validation data
-    #x, y, fs = fetch_data(data_dict, keys)
+    x, y, fs = fetch_data(training_data_dict, training_keys[0])
+    # Get training/validation data with singer ids
+    #x, y, fs, singer_ids = fetch_data_with_singer_ids(training_data_dict, training_keys[0])
 
 
 # EOF

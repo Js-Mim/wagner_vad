@@ -34,7 +34,7 @@ class FNNClassifier(nn.Module):
         self.fnn_c.bias.data.zero_()
         return None
 
-    def forward(self, h_dec, mel_x):
+    def forward(self, h_dec, mel_x, ld_space=False):
         mel_mask = self.relu(self.fnn_a(h_dec))
         mel_filt = mel_mask * mel_x
 
@@ -42,7 +42,10 @@ class FNNClassifier(nn.Module):
         cls_input = self.tanh(self.fnn_c(cls_input))
         vad_prob = self.fnn_cls(cls_input)
 
-        return mel_filt, vad_prob
+        if not ld_space:
+            return mel_filt, vad_prob
+        else:
+            return mel_filt, vad_prob, cls_input
 
 
 # EOF

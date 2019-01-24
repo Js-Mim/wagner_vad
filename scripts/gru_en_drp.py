@@ -328,7 +328,7 @@ def perform_cluster_visualization():
     testing_key = keys[0]  # Validate on the second composer
     print('Testing on: ' + ' '.join(testing_key))
     # Get data
-    x, y, fs, singer_list = helpers.fetch_data_with_singer_ids(data_dict, testing_key)
+    x, y, fs, singer_id_list = helpers.fetch_data_with_singer_ids(data_dict, testing_key)
     x *= 0.99 / np.max(np.abs(x))
 
     sigmoid = torch.nn.Sigmoid()  # Label helper!
@@ -338,8 +338,7 @@ def perform_cluster_visualization():
     for data_point in tqdm(range(number_of_data_points)):
         # Generate data
         x_d_p = x[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
-        y_d_p = y[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
-
+        y_d_p = np.argmax(y[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples], axis=-1)
         # Reshape data
         x_d_p = x_d_p.reshape(1, d_p_length_samples)
         y_d_p = y_d_p.reshape(1, d_p_length_samples)
@@ -366,7 +365,9 @@ def perform_cluster_visualization():
 
         # Target data preparation
         y_true = nn_list[6].forward(y_cuda).detach()
-        vad_true = y_true.gt(0.51).float().data.cpu().numpy()[0, :, 0]
+        y_true_max = y_true.max()
+        true_label = (y_true.gt(0.55).float() * y_true_max).data.cpu().numpy()[0, :, 0]
+        vad_true = np.copy(true_label)
 
         if data_point == 0:
             out_space = cl_space
@@ -380,18 +381,31 @@ def perform_cluster_visualization():
     # Scatter plot
     fig = plt.figure()
     ax = Axes3D(fig)
-    posistive_examples = np.where(out_true_prob == 1)[0]
-    negative_examples = np.where(out_true_prob == 0)[0]
-    ax.scatter(out_space[posistive_examples, 0],
-               out_space[posistive_examples, 1],
-               out_space[posistive_examples, 2],
-               c='red', s=0.5, vmax=1, vmin=-1,
-               label='Singing Voice', alpha=0.7)
-    ax.scatter(out_space[negative_examples, 0],
-               out_space[negative_examples, 1],
-               out_space[negative_examples, 2],
+    silence_examples = np.where(out_true_prob == 0)[0]
+    hunding_examples = np.where(out_true_prob == 1)[0]
+    sieglinde_examples = np.where(out_true_prob == 2)[0]
+    siegmund_examples = np.where(out_true_prob == 3)[0]
+
+    ax.scatter(out_space[silence_examples, 0],
+               out_space[silence_examples, 1],
+               out_space[silence_examples, 2],
                c='black', s=0.5, vmax=1, vmin=-1,
-               label='No Singing Voice', alpha=0.7)
+               label='Silence', alpha=0.7)
+    ax.scatter(out_space[hunding_examples, 0],
+               out_space[hunding_examples, 1],
+               out_space[hunding_examples, 2],
+               c='red', s=0.5, vmax=1, vmin=-1,
+               label='Hunding', alpha=0.7)
+    ax.scatter(out_space[sieglinde_examples, 0],
+               out_space[sieglinde_examples, 1],
+               out_space[sieglinde_examples, 2],
+               c='cyan', s=0.5, vmax=1, vmin=-1,
+               label='Sieglinde', alpha=0.7)
+    ax.scatter(out_space[siegmund_examples, 0],
+               out_space[siegmund_examples, 1],
+               out_space[siegmund_examples, 2],
+               c='magenta', s=0.5, vmax=1, vmin=-1,
+               label='Siegmund', alpha=0.7)
     ax.legend()
     ax.set_title('Low Dimensional Latent Space')
     ax.set_xlabel('x-axis')
@@ -408,12 +422,12 @@ if __name__ == "__main__":
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
     # Training
-    perform_training()
+    #perform_training()
 
     # Testing
     #perform_testing()
 
     # Clustering tests
-    #perform_cluster_visualization()
+    perform_cluster_visualization()
 
 # EOF

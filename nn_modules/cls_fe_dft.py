@@ -177,7 +177,7 @@ class Synthesis(nn.Module):
         synwProd.shape = (wsz, 1)
         redundancy = wsz / hop
         env = np.zeros((wsz, 1))
-        for k in xrange(-redundancy, redundancy + 1):
+        for k in range(-redundancy, redundancy + 1):
             envInd = (hop * k)
             winInd = np.arange(1, wsz + 1)
             envInd += winInd

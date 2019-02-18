@@ -181,14 +181,13 @@ def fetch_data_with_singer_ids(data_annotations, key):
             raise AttributeError("Unequal number of pointers and singer ids. Problems may occur...")
 
         out_y = np.zeros((out_x.shape[0], len(singer_list) + 1))
-        out_y[:, 0] = 1.
 
         for p_indx in range(len(pointers_in)):
             c_pin = int(np.floor(pointers_in[p_indx] * out_fs))
             c_pout = int(np.floor(pointers_out[p_indx] * out_fs))
             singer_class = [class_index for class_index, singer_element in
                             enumerate(singer_list) if singer_element == singer_id[p_indx]][0] + 1
-            out_y[c_pin:c_pout, 0] = 0.
+            out_y[c_pin:c_pout, 0] = 1.
             out_y[c_pin:c_pout, singer_class] = 1.
 
         return out_x, out_y, out_fs, singer_list
@@ -201,7 +200,7 @@ def fetch_data_with_singer_ids(data_annotations, key):
             print('Fetching: ' + key_item)
             x_b, y_b, _, _ = _fetch_data(data_annotations, key_item)
             x = np.hstack((x, x_b))
-            y = np.hstack((y, y_b))
+            y = np.vstack((y, y_b))
     else:
         x, y, fs, list_of_singers = _fetch_data(data_annotations, key)
 
@@ -249,10 +248,12 @@ def gimme_batches(batch_indx, data_points, x_in, y_out):
     x_d_ps = np.zeros((exp_settings['batch_size'], d_p_length_samples))
     y_d_ps = np.zeros((exp_settings['batch_size'], d_p_length_samples))
     storing_index = 0
+
     for data_point in batch_data_points:
-        # Generate data
+        # Chop data
         x_s = x_in[data_point * d_p_length_samples:(data_point + 1) * d_p_length_samples]\
             .reshape(1, d_p_length_samples)
+
         y_s = y_out[data_point * d_p_length_samples:(data_point + 1) * d_p_length_samples]\
             .reshape(1, d_p_length_samples)
 
@@ -261,6 +262,29 @@ def gimme_batches(batch_indx, data_points, x_in, y_out):
         storing_index += 1
 
     return x_d_ps, y_d_ps
+
+
+def gimme_batches_multi_class(batch_indx, data_points, y_clusters):
+
+    batch_data_points = data_points[batch_indx * exp_settings['batch_size']:
+                                    (batch_indx + 1) * exp_settings['batch_size']]
+
+    d_p_length_samples = exp_settings['d_p_length'] * exp_settings['fs']
+
+    num_of_clusters = y_clusters.shape[-1]
+
+    y_d_ps = np.zeros((exp_settings['batch_size'], d_p_length_samples, num_of_clusters))
+    storing_index = 0
+
+    for data_point in batch_data_points:
+        # Chop data
+        y_s = y_clusters[data_point * d_p_length_samples:(data_point + 1) * d_p_length_samples]\
+            .reshape(1, d_p_length_samples, num_of_clusters)
+
+        y_d_ps[storing_index, :] = y_s
+        storing_index += 1
+
+    return y_d_ps
 
 
 if __name__ == '__main__':
@@ -273,7 +297,7 @@ if __name__ == '__main__':
     # Get training/validation data
     x, y, fs = fetch_data(training_data_dict, training_keys[0])
     # Get training/validation data with singer ids
-    #x, y, fs, singer_ids = fetch_data_with_singer_ids(training_data_dict, training_keys[0])
+    x, y, fs, singer_ids = fetch_data_with_singer_ids(training_data_dict, training_keys[0])
 
 
 # EOF

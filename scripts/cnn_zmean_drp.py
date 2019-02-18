@@ -426,7 +426,7 @@ if __name__ == "__main__":
     #perform_testing()
 
     # Clustering visualization
-    perform_cluster_visualization()
+    #perform_cluster_visualization()
 
 
 # EOF

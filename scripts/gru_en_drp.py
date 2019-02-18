@@ -13,6 +13,7 @@ __copyright__ = 'Fraunhofer IDMT'
 # imports
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_fscore_support as prf
 from tqdm import tqdm
 from nn_modules import cls_fe_dft, cls_pcen, cls_grus, cls_fnns, cls_fe_label_smoother
@@ -24,7 +25,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 def build_model(flag='training'):
-    print('--- Building Model---')
+    print('--- Building Model ---')
     if flag == 'testing':
         batch_size = 1
     else:
@@ -120,7 +121,6 @@ def perform_training():
                     torch.save(gru_enc.state_dict(), 'results/en_gru_enc_bs_drp.pytorch')
                     torch.save(gru_dec.state_dict(), 'results/en_gru_dec_bs_drp.pytorch')
                     torch.save(fc_layer.state_dict(), 'results/en_cls_bs_drp.pytorch')
-
             else:
                 # Decrease learning rate
                 scheduler_n.step()
@@ -135,7 +135,6 @@ def perform_training():
         available_batches = len(shuffled_data_points)//exp_settings['batch_size']
         for batch in tqdm(range(available_batches)):
             x_d_p, y_d_p = helpers.gimme_batches(batch, shuffled_data_points, x, y)
-
             x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p).cuda(), requires_grad=False).float().detach()
             y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p).cuda(), requires_grad=False).float().detach()
 
@@ -180,7 +179,7 @@ def perform_training():
 
 
 def perform_validation(nn_list):
-    print('---Performing Validation---')
+    print('--- Performing Validation ---')
     d_p_length_samples = exp_settings['d_p_length'] * exp_settings['fs']
     # Get data dictionary
     data_dict = helpers.csv_to_dict(training=True)
@@ -244,7 +243,7 @@ def perform_validation(nn_list):
 
 
 def perform_testing():
-    print('---Performing Evaluation---')
+    print('--- Performing Evaluation ---')
     nn_list = list(build_model(flag='testing'))
     data_dict = helpers.csv_to_dict(training=False)
     keys = list(data_dict.keys())
@@ -284,23 +283,24 @@ def perform_testing():
         # Classifier
         mel_filt, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
         vad_prob = sigmoid(vad_prob)
-        vad_prob = vad_prob.gt(0.51).float().data.cpu().numpy()[0, :, 0]
+        vad_prob = vad_prob.gt(0.55).float().data.cpu().numpy()[0, :, 0]
 
         # Target data preparation
         y_true = nn_list[6].forward(y_cuda).detach()
-        vad_true = y_true.gt(0.51).float().data.cpu().numpy()[0, :, 0]
+        vad_true = y_true.gt(0.5).float().data.cpu().numpy()[0, :, 0]
 
         """
         # A hasty example for plotting some of the results
-        if vad_true.mean() >= 0.55:
-            import matplotlib.pyplot as plt
-            plt.figure()
-            plt.imshow(mel_mag.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-            plt.figure()
-            plt.imshow(mel_mag_pr.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-            plt.figure()
-            plt.imshow(mel_filt.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-            plt.show()
+        plt.figure()
+        plt.plot(y_d_p[0, :])
+        plt.figure()
+        plt.plot(vad_true)
+        plt.plot(vad_prob)
+        plt.figure()
+        plt.imshow(mel_mag.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
+        plt.figure()
+        plt.imshow(mel_filt.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
+        plt.show()
         """
 
         if data_point == 0:
@@ -320,8 +320,8 @@ def perform_testing():
     return None
 
 
-def perform_cluster_visualization():
-    print('---Performing Evaluation---')
+def perform_cluster_visualization(singers=True):
+    print('--- Performing Visualization ---')
     nn_list = list(build_model(flag='testing'))
     data_dict = helpers.csv_to_dict(training=False)
     keys = list(data_dict.keys())
@@ -330,7 +330,6 @@ def perform_cluster_visualization():
     # Get data
     x, y, fs, singer_id_list = helpers.fetch_data_with_singer_ids(data_dict, testing_key)
     x *= 0.99 / np.max(np.abs(x))
-
     sigmoid = torch.nn.Sigmoid()  # Label helper!
     d_p_length_samples = exp_settings['d_p_length'] * exp_settings['fs']  # Length in samples
 
@@ -338,10 +337,10 @@ def perform_cluster_visualization():
     for data_point in tqdm(range(number_of_data_points)):
         # Generate data
         x_d_p = x[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
-        y_d_p = np.argmax(y[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples], axis=-1)
+        y_d_p = y[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples, :]
         # Reshape data
         x_d_p = x_d_p.reshape(1, d_p_length_samples)
-        y_d_p = y_d_p.reshape(1, d_p_length_samples)
+        y_d_p = y_d_p.reshape(1, d_p_length_samples, exp_settings['clust_dim'] + 1)
         x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p).cuda(), requires_grad=False).float().detach()
         y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p).cuda(), requires_grad=False).float().detach()
 
@@ -360,58 +359,68 @@ def perform_cluster_visualization():
         # Classifier
         mel_filt, vad_prob, cl_space = nn_list[5].forward(h_dec, mel_mag_pr, ld_space=True)
         vad_prob = sigmoid(vad_prob)
-        vad_prob = vad_prob.gt(0.5).float().data.cpu().numpy()[0, :, 0]
+        vad_prob = vad_prob.gt(0.51).float().data.cpu().numpy()[0, :, 0]
         cl_space = cl_space.data.cpu().numpy()[0, :]
 
         # Target data preparation
-        y_true = nn_list[6].forward(y_cuda).detach()
-        y_true_max = y_true.max()
-        true_label = (y_true.gt(0.55).float() * y_true_max).data.cpu().numpy()[0, :, 0]
-        vad_true = np.copy(true_label)
-
+        y_true = nn_list[6].forward(y_cuda).detach().gt(0.5).float().data.cpu().numpy()[0, :, 0]
         if data_point == 0:
             out_space = cl_space
-            out_true_prob = vad_true
+            out_true_prob = y_true
             out_vad_prob = vad_prob
         else:
             out_space = np.vstack((out_space, cl_space))
-            out_true_prob = np.hstack((out_true_prob, vad_true))
+            out_true_prob = np.hstack((out_true_prob, y_true))
             out_vad_prob = np.hstack((out_vad_prob, vad_prob))
 
     # Scatter plot
     fig = plt.figure()
     ax = Axes3D(fig)
     silence_examples = np.where(out_true_prob == 0)[0]
-    hunding_examples = np.where(out_true_prob == 1)[0]
-    sieglinde_examples = np.where(out_true_prob == 2)[0]
-    siegmund_examples = np.where(out_true_prob == 3)[0]
 
     ax.scatter(out_space[silence_examples, 0],
                out_space[silence_examples, 1],
                out_space[silence_examples, 2],
                c='black', s=0.5, vmax=1, vmin=-1,
                label='Silence', alpha=0.7)
-    ax.scatter(out_space[hunding_examples, 0],
-               out_space[hunding_examples, 1],
-               out_space[hunding_examples, 2],
-               c='red', s=0.5, vmax=1, vmin=-1,
-               label='Hunding', alpha=0.7)
-    ax.scatter(out_space[sieglinde_examples, 0],
-               out_space[sieglinde_examples, 1],
-               out_space[sieglinde_examples, 2],
-               c='cyan', s=0.5, vmax=1, vmin=-1,
-               label='Sieglinde', alpha=0.7)
-    ax.scatter(out_space[siegmund_examples, 0],
-               out_space[siegmund_examples, 1],
-               out_space[siegmund_examples, 2],
-               c='magenta', s=0.5, vmax=1, vmin=-1,
-               label='Siegmund', alpha=0.7)
+
+    if singers:
+        hunding_examples = np.where(out_true_prob[:, 1] == 1)[0]
+        sieglinde_examples = np.where(out_true_prob[:, 2] == 1)[0]
+        siegmund_examples = np.where(out_true_prob[:, 3] == 1)[0]
+
+        ax.scatter(out_space[hunding_examples, 0],
+                   out_space[hunding_examples, 1],
+                   out_space[hunding_examples, 2],
+                   c='red', s=0.5, vmax=1, vmin=-1,
+                   label='Hunding', alpha=0.7)
+        ax.scatter(out_space[sieglinde_examples, 0],
+                   out_space[sieglinde_examples, 1],
+                   out_space[sieglinde_examples, 2],
+                   c='cyan', s=0.5, vmax=1, vmin=-1,
+                   label='Sieglinde', alpha=0.7)
+        ax.scatter(out_space[siegmund_examples, 0],
+                   out_space[siegmund_examples, 1],
+                   out_space[siegmund_examples, 2],
+                   c='magenta', s=0.5, vmax=1, vmin=-1,
+                   label='Siegmund', alpha=0.7)
+    else:
+        active_examples = np.where(out_true_prob == 1)[0]
+        ax.scatter(out_space[active_examples, 0],
+                   out_space[active_examples, 1],
+                   out_space[active_examples, 2],
+                   c='red', s=0.5, vmax=1, vmin=-1,
+                   label='Singing Voice', alpha=0.7)
+
     ax.legend()
     ax.set_title('Low Dimensional Latent Space')
     ax.set_xlabel('x-axis')
     ax.set_ylabel('y-axis')
     ax.set_zlabel('z-axis')
+    ax.view_init(elev=-141, azim=21)
+    plt.savefig('/home/mis/GRU_PCEN.png', dpi=400)
     plt.show(block=False)
+
     return None
 
 
@@ -428,6 +437,6 @@ if __name__ == "__main__":
     #perform_testing()
 
     # Clustering tests
-    perform_cluster_visualization()
+    #perform_cluster_visualization(singers=False)
 
 # EOF

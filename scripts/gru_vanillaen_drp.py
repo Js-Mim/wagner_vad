@@ -19,8 +19,6 @@ from nn_modules import cls_fe_dft, cls_pcen, cls_grus, cls_fnns, cls_fe_label_sm
 from tools import helpers, visualize
 from torch.optim.lr_scheduler import StepLR
 from tools.experiment_settings import exp_settings
-from matplotlib import pylab as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 
 def build_model(flag='training'):
@@ -317,87 +315,6 @@ def perform_testing():
     print('Recall: %2f' % res[1])
     print('Fscore: %2f' % res[2])
     print('Error: %2f' % cls_error)
-    return None
-
-
-def perform_cluster_visualization():
-    print('---Performing Evaluation---')
-    nn_list = list(build_model(flag='testing'))
-    data_dict = helpers.csv_to_dict(training=False)
-    keys = list(data_dict.keys())
-    testing_key = keys[0]  # Validate on the second composer
-    print('Testing on: ' + ' '.join(testing_key))
-    # Get data
-    x, y, fs, singer_list = helpers.fetch_data_with_singer_ids(data_dict, testing_key)
-    x *= 0.99 / np.max(np.abs(x))
-
-    sigmoid = torch.nn.Sigmoid()  # Label helper!
-    d_p_length_samples = exp_settings['d_p_length'] * exp_settings['fs']  # Length in samples
-
-    number_of_data_points = len(x) // d_p_length_samples
-    for data_point in tqdm(range(number_of_data_points)):
-        # Generate data
-        x_d_p = x[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
-        y_d_p = y[data_point*d_p_length_samples:(data_point+1)*d_p_length_samples]
-
-        # Reshape data
-        x_d_p = x_d_p.reshape(1, d_p_length_samples)
-        y_d_p = y_d_p.reshape(1, d_p_length_samples)
-        x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p).cuda(), requires_grad=False).float().detach()
-        y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p).cuda(), requires_grad=False).float().detach()
-
-        # Forward analysis pass: Input data
-        x_real, x_imag = nn_list[0].forward(x_cuda)
-        # Magnitude computation
-        mag = torch.norm(torch.cat((x_real, x_imag), 0), 2, dim=0).unsqueeze(0)
-        # Mel analysis
-        mel_mag = torch.autograd.Variable(nn_list[1].forward(mag).data, requires_grad=False)
-
-        # Learned normalization
-        mel_mag_pr = nn_list[2].forward(mel_mag)
-        # GRUs
-        h_enc = nn_list[3].forward(mel_mag_pr)
-        h_dec = nn_list[4].forward(h_enc)
-        # Classifier
-        mel_filt, vad_prob, cl_space = nn_list[5].forward(h_dec, mel_mag_pr, ld_space=True)
-        vad_prob = sigmoid(vad_prob)
-        vad_prob = vad_prob.gt(0.5).float().data.cpu().numpy()[0, :, 0]
-        cl_space = cl_space.data.cpu().numpy()[0, :]
-
-        # Target data preparation
-        y_true = nn_list[6].forward(y_cuda).detach()
-        vad_true = y_true.gt(0.51).float().data.cpu().numpy()[0, :, 0]
-
-        if data_point == 0:
-            out_space = cl_space
-            out_true_prob = vad_true
-            out_vad_prob = vad_prob
-        else:
-            out_space = np.vstack((out_space, cl_space))
-            out_true_prob = np.hstack((out_true_prob, vad_true))
-            out_vad_prob = np.hstack((out_vad_prob, vad_prob))
-
-    # Scatter plot
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    posistive_examples = np.where(out_true_prob == 1)[0]
-    negative_examples = np.where(out_true_prob == 0)[0]
-    ax.scatter(out_space[posistive_examples, 0],
-               out_space[posistive_examples, 1],
-               out_space[posistive_examples, 2],
-               c='red', s=0.5, vmax=1, vmin=-1,
-               label='Singing Voice', alpha=0.7)
-    ax.scatter(out_space[negative_examples, 0],
-               out_space[negative_examples, 1],
-               out_space[negative_examples, 2],
-               c='black', s=0.5, vmax=1, vmin=-1,
-               label='No Singing Voice', alpha=0.7)
-    ax.legend()
-    ax.set_title('Low Dimensional Latent Space')
-    ax.set_xlabel('x-axis')
-    ax.set_ylabel('y-axis')
-    ax.set_zlabel('z-axis')
-    plt.show(block=False)
     return None
 
 

@@ -7,7 +7,7 @@ import torch.nn as nn
 
 
 class FNNClassifier(nn.Module):
-    def __init__(self, cls_dim, n_in, n_out):
+    def __init__(self, cls_dim, n_in, n_out, cls_out=1):
         super(FNNClassifier, self).__init__()
 
         # FNN Layer A
@@ -17,9 +17,11 @@ class FNNClassifier(nn.Module):
         # FNN Layer C
         self.fnn_c = nn.Linear(n_out//3, cls_dim, bias=True)
         # Classifier
-        self.fnn_cls = nn.Linear(cls_dim, 1, bias=False)
+        self.fnn_cls = nn.Linear(cls_dim, cls_out, bias=False)
+
         # Activation functions
         self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
         self.tanh = nn.Tanh()
 
         self.initialize_fnn()
@@ -46,6 +48,5 @@ class FNNClassifier(nn.Module):
             return mel_filt, vad_prob
         else:
             return mel_filt, vad_prob, cls_input
-
 
 # EOF

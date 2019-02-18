@@ -7,12 +7,14 @@ exp_settings = {
     'ft_size': 2048,                   # N-DFT size
     'hop_size': 512,                   # STFT hop-size
     'n_mel': 250,                      # Mel bands
-    'classification_dim': 3,           # Dimensionality for classification
+    'classification_dim': 3,           # Dimensionality given to the classifier
+    'classification_dim_ids': 3,       # Dimensionality for the output of the singer classifier
+    'reg_lambda': 0.,                 # Regularization of the clustering
     'batch_size': 64,                  # Batch size
     'T': 134,                          # Analysis time-frames <-- pre-defined atm :(
-    'epochs': 150,                     # Number of iterations
+    'epochs': 100,                     # Number of iterations
     'd_p_length': 3,                   # Length of each data point (spectral patch) in seconds
-    'drp_rate': 0.2,                   # Drop-out rate -->                 # 0.5 for reproducing the results for the GRU
+    'drp_rate': 0.2,                   # Drop-out rate
     'learning_rate_drop': 0.8,         # Factor for decreasing the learning rate
     'learning_date_incr': 1.1,         # Factor for increasing the learning rate
     'end2end': False,                  # End2End learning flag

@@ -309,12 +309,16 @@ def perform_testing():
             out_true_prob = np.hstack((out_true_prob, vad_true))
 
     res = prf(out_true_prob, out_prob, average='binary')
-    cls_error = np.sum(np.abs(out_true_prob - out_prob))/np.shape(out_true_prob) * 100.
+    cls_error = np.sum(np.abs(out_true_prob - out_prob))/np.shape(out_true_prob)[0] * 100.
+    voice_regions_percentage = (len(np.where(out_true_prob == 1)[0]))/np.shape(out_true_prob)[0] * 100.
+    non_voice_regions_percentage = (len(np.where(out_true_prob == 0)[0]))/np.shape(out_true_prob)[0] * 100.
 
     print('Precision: %2f' % res[0])
     print('Recall: %2f' % res[1])
     print('Fscore: %2f' % res[2])
     print('Error: %2f' % cls_error)
+    print('Singing voice frames percentage %2f' % voice_regions_percentage)
+    print('Non-singing voice frames percentage %2f' % non_voice_regions_percentage)
     return None
 
 
@@ -423,7 +427,7 @@ if __name__ == "__main__":
     #perform_training()
 
     # Testing
-    #perform_testing()
+    perform_testing()
 
     # Clustering visualization
     #perform_cluster_visualization()

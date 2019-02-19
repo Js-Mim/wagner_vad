@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'S.I. Mimilakis'
-__copyright__ = 'MacSeNet'
+__copyright__ = 'Fraunhofer IDMT'
 
 # imports
 import numpy as np

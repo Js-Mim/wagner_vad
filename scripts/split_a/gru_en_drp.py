@@ -51,10 +51,10 @@ def build_model(flag='training'):
                                                           hop_size=exp_settings['hop_size'])
     if flag == 'testing':
         print('--- Loading Model ---')
-        pcen.load_state_dict(torch.load('results/en_pcen_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
-        gru_enc.load_state_dict(torch.load('results/en_gru_enc_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
-        gru_dec.load_state_dict(torch.load('results/en_gru_dec_bs_drp.pytorch',  map_location={'cuda:1': 'cpu:0'}))
-        fc_layer.load_state_dict(torch.load('results/en_cls_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
+        pcen.load_state_dict(torch.load('results/split_a/en_pcen_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
+        gru_enc.load_state_dict(torch.load('results/split_a/en_gru_enc_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
+        gru_dec.load_state_dict(torch.load('results/split_a/en_gru_dec_bs_drp.pytorch',  map_location={'cuda:1': 'cpu:0'}))
+        fc_layer.load_state_dict(torch.load('results/split_a/en_cls_bs_drp.pytorch', map_location={'cuda:1': 'cpu:0'}))
     if flag == 'training':
         dft_analysis = dft_analysis.cuda()
         mel_analysis = mel_analysis.cuda()
@@ -117,10 +117,10 @@ def perform_training():
                     # Update best error
                     best_error = cls_err
                     print('--- Saving Model ---')
-                    torch.save(pcen.state_dict(), 'results/en_pcen_bs_drp.pytorch')
-                    torch.save(gru_enc.state_dict(), 'results/en_gru_enc_bs_drp.pytorch')
-                    torch.save(gru_dec.state_dict(), 'results/en_gru_dec_bs_drp.pytorch')
-                    torch.save(fc_layer.state_dict(), 'results/en_cls_bs_drp.pytorch')
+                    torch.save(pcen.state_dict(), 'results/split_a/en_pcen_bs_drp.pytorch')
+                    torch.save(gru_enc.state_dict(), 'results/split_a/en_gru_enc_bs_drp.pytorch')
+                    torch.save(gru_dec.state_dict(), 'results/split_a/en_gru_dec_bs_drp.pytorch')
+                    torch.save(fc_layer.state_dict(), 'results/split_a/en_cls_bs_drp.pytorch')
             else:
                 # Decrease learning rate
                 scheduler_n.step()

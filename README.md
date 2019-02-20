@@ -33,4 +33,5 @@ State of the art approaches:
 ### Latent Feature Learning
 ### Classifier
 Feed-forward-fully-connected neural network followed by a sigmoid function
-
+### Optimization
+Binary cross entropy and back-propagation of errors using the Adam algorithm as a solver

@@ -435,7 +435,7 @@ if __name__ == "__main__":
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
     # Training
-    perform_training()
+    #perform_training()
 
     # Testing
     #perform_testing()

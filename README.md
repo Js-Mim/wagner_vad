@@ -24,14 +24,61 @@ the **Haitink** recording for validation, and the **Karajan** recording with the
 
 ## Supervised model
 ### Input to the Model
-Mel-spectograms extracted using ...
+Mel-spectograms extracted using the short-time Fourier transform with a hop size of 512 samples and an analysis size of 2048 samples.
+The number of Mel-bands is set to 250, following some pilot experimental procedure. A total of 3 seconds is used as a
+sequence input to the rest of the modules, yielding a number of 134 time-frames in total per data-point used for training.
 ### Representation Learning
 State of the art approaches:
 1. Per-Channel Energy Normalization (PCEN)
 2. 0-mean Convolutional Neural Networks (0-μ CNN)
 3. Low-Rank PCEN (LR-PCEN): Serving as an extension of the PCEN
 ### Latent Feature Learning
+A stack of bi-directional gated recurrent neural networks which output some information that is used to **mask** the
+mel spectrogram provided by the **Representation Learning** module. The masked output can be used for interpreting
+the results, hoping for a better "interpretability" of each model.
 ### Classifier
-Feed-forward-fully-connected neural network followed by a sigmoid function
+The **Classifier** module consists of a few layers for reducing the dimensionality of the masked data. The yielded
+three-dimensional representation is given to a feed-forward-fully-connected neural network followed by a sigmoid function
+for outputing the activity of the operatic singing voice **per frame**.
 ### Optimization
 Binary cross entropy and back-propagation of errors using the Adam algorithm as a solver
+
+
+### Results
+1. Storage
+⋅⋅ All the binary files from the results can be found in the following seafile link: https://seafile.idmt.fraunhofer.de/d/8724ff410d714d6fb437/ .
+Currently the results are reported for the two above mentioned data splits, that are denoted as **split_a** and **split_b**.
+The same names are used for the code repository. For the predicted, by each model, and true labels please download them
+from the above link, they are stored under the "*.npy" files.
+2. Reproducibility
+⋅⋅ For reproducing the results, executing the files in the "/scripts/" folder will provide the reported
+results. If only the test-phase of each experiment is needed, the results from the optimization can be found under
+the above seafile link. The downloaded material can be placed in the corresponding "/results/" folder of this code
+repository and the "perform_training()" function in each script should be commented and the "perform_testing()" function
+should be used instead.
+3. Elementary Statistics
+⋅⋅ Just for the sake of checking on the validity of the results of each model and experiment, below you can find the percentage
+of singing voice activity versus the percentage of the non-singing voice time-frames.
+In the test set ~51.90% of the time-frames contain operatic singing voice, whereas ~48.10% contains non-singing voice
+parts. From a first view, the dataset looks very balanced, and thus the following results are significant in
+detecting singing voice versus non-singing voice.
+4. Experimental Results
+
+### **split_a**
+| Metric         | 0μ-CNN    | PCEN    | LR-PCEN  |
+| ---------------|:---------:|:-------:|:--------:|
+| Precision      | 0.888     | 0.892   | 0.910    |
+| Recall         | 0.885     | 0.903   | 0.902    |
+| F1-Score       | 0.887     | 0.898   | 0.906    |
+| Error-rate (%) | 11.705 %  | 10.62%  | 09.65%   |
+
+### **split_b**
+| Metric         | 0μ-CNN    | PCEN    | LR-PCEN  |
+| ---------------|:---------:|:-------:|:--------:|
+| Precision      | 0.840     | 0.849   | 0.888    |
+| Recall         | 0.857     | 0.770   | 0.752    |
+| F1-Score       | 0.849     | 0.808   | 0.814    |
+| Error-rate (%) | 15.839 %  | 19.01%  | 17.76%   |
+
+
+

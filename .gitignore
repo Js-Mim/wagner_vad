@@ -21,8 +21,9 @@ __pycache__/
 *.py[cod]
 *.bin
 
-# Some packages      #
+# Other files        #
 ######################
 *.zip
 *.pytorch
+*.npy
 

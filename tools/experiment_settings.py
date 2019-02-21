@@ -9,10 +9,13 @@ exp_settings = {
     'n_mel': 250,                      # Mel bands
     'classification_dim': 3,           # Dimensionality given to the classifier
     'classification_dim_ids': 3,       # Dimensionality for the output of the singer classifier
-    'reg_lambda': 0.,                 # Regularization of the clustering
+    'reg_lambda': 0.,                  # Regularization of the clustering
     'batch_size': 64,                  # Batch size
     'T': 134,                          # Analysis time-frames <-- pre-defined atm :(
     'epochs': 100,                     # Number of iterations
+    'split_name': 'split_b',           # Data split identifier for saving the results under different folder
+    'split_training_indx': 1,          # Integer indicating up to which opera will be used for training (#2: uses Barenboi-Kupfer and Haitink)
+    'split_validation_indx': 1,        # Integer indicating the opera used for validation (#2: uses Karajan for validation)
     'd_p_length': 3,                   # Length of each data point (spectral patch) in seconds
     'drp_rate': 0.2,                   # Drop-out rate
     'learning_rate_drop': 0.8,         # Factor for decreasing the learning rate

@@ -59,7 +59,7 @@ should be used instead.
 3. Elementary Statistics
 ⋅⋅ Just for the sake of checking on the validity of the results of each model and experiment, below you can find the percentage
 of singing voice activity versus the percentage of the non-singing voice time-frames.
-In the test set ~51.90% of the time-frames contain operatic singing voice, whereas ~48.10% contains non-singing voice
+In the test set **~51.90%** of the time-frames contain operatic **singing voice**, whereas **~48.10%** contains **non-singing voice**
 parts. From a first view, the dataset looks very balanced, and thus the following results are significant in
 detecting singing voice versus non-singing voice.
 4. Experimental Results

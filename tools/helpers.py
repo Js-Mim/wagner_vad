@@ -63,7 +63,7 @@ def csv_to_dict(training=True):
                 path_to_wav = []
                 print('Audio file missing for annotation: ' + item)
 
-            with open(os.path.join(path_to_csv, item), 'r') as csvfile:
+            with open(os.path.join(path_to_csv, item), 'r', encoding='utf-8') as csvfile:
                 csvreader = csv.reader(csvfile, delimiter='/')
                 next(csvreader, None)
                 # Lists

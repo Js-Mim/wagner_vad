@@ -78,8 +78,6 @@ def build_model(flag='training'):
 
 
 def perform_training():
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-
     # Check if saving path exists
     if not (os.path.isdir(os.path.join("results/" + exp_settings['split_name']))):
         print('Saving directory was not found... Creating a new folder to store the results!')

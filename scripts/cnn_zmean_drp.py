@@ -76,8 +76,6 @@ def build_model(flag='training'):
 
 
 def perform_training():
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-
     # Check if saving path exists
     if not (os.path.isdir(os.path.join("results/" + exp_settings['split_name']))):
         print('Saving directory was not found... Creating a new folder to store the results!')
@@ -297,6 +295,7 @@ def perform_testing():
 
         # Learned normalization
         mel_mag_pr = nn_list[2].forward(mel_mag)
+
         # GRUs
         h_enc = nn_list[3].forward(mel_mag_pr)
         h_dec = nn_list[4].forward(h_enc)

@@ -52,17 +52,17 @@ def build_model(flag='training'):
         print('--- Loading Model ---')
         pcen.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
                                                      'vanillaen_pcen_bs_drp.pytorch'),
-                                        map_location={'cuda:1': 'cpu:0'}))
+                                        map_location=lambda storage, location: storage))
 
         gru_enc.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
                                                         'vanillaen_gru_enc_bs_drp.pytorch'),
-                                           map_location={'cuda:1': 'cpu:0'}))
+                                           map_location=lambda storage, location: storage))
         gru_dec.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
                                                         'vanillaen_gru_dec_bs_drp.pytorch'),
-                                           map_location={'cuda:1': 'cpu:0'}))
+                                           map_location=lambda storage, location: storage))
         fc_layer.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
                                                          'vanillaen_cls_bs_drp.pytorch'),
-                                            map_location={'cuda:1': 'cpu:0'}))
+                                            map_location=lambda storage, location: storage))
     if flag == 'training':
         dft_analysis = dft_analysis.cuda()
         mel_analysis = mel_analysis.cuda()
@@ -76,6 +76,8 @@ def build_model(flag='training'):
 
 
 def perform_training():
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
     # Check if saving path exists
     if not (os.path.isdir(os.path.join("results/" + exp_settings['split_name']))):
         print('Saving directory was not found... Creating a new folder to store the results!')
@@ -283,8 +285,8 @@ def perform_testing():
         # Reshape data
         x_d_p = x_d_p.reshape(1, d_p_length_samples)
         y_d_p = y_d_p.reshape(1, d_p_length_samples)
-        x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p).cuda(), requires_grad=False).float().detach()
-        y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p).cuda(), requires_grad=False).float().detach()
+        x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p), requires_grad=False).float().detach()
+        y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p), requires_grad=False).float().detach()
 
         # Forward analysis pass: Input data
         x_real, x_imag = nn_list[0].forward(x_cuda)
@@ -349,7 +351,6 @@ if __name__ == "__main__":
     np.random.seed(218)
     torch.manual_seed(218)
     torch.cuda.manual_seed(218)
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
     # Training
     #perform_training()

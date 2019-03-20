@@ -2,6 +2,11 @@
 __author__ = 'S.I. Mimilakis'
 __copyright__ = 'Fraunhofer IDMT'
 
+import torch
+
+torch.has_cudnn = False
+torch.set_default_tensor_type('torch.FloatTensor')
+
 exp_settings = {
     'fs': 22050,                       # Sampling frequency
     'ft_size': 2048,                   # N-DFT size

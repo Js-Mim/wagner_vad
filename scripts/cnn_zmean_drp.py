@@ -52,18 +52,34 @@ def build_model(flag='training'):
 
     if flag == 'testing':
         print('--- Loading Model ---')
-        cnn_block.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                          'cnn_zmean_drp.pytorch'),
-                                             map_location=lambda storage, location: storage))
-        gru_enc.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                        'cnn_gru_enc_drp.pytorch'),
-                                           map_location=lambda storage, location: storage))
-        gru_dec.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                        'cnn_gru_dec_drp.pytorch'),
-                                           map_location=lambda storage, location: storage))
-        fc_layer.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                         'cnn_cls_drp.pytorch'),
-                                            map_location=lambda storage, location: storage))
+        cnn_block = helpers.load_torch_weights(
+            cnn_block,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'cnn_zmean_drp.pytorch'),
+                       map_location={'cuda:0': 'cpu'}
+                       )
+        )
+
+        gru_enc = helpers.load_torch_weights(
+            gru_enc,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'cnn_gru_enc_drp.pytorch'),
+                       map_location=lambda storage, location: storage)
+        )
+
+        gru_dec = helpers.load_torch_weights(
+            gru_dec,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'cnn_gru_dec_drp.pytorch'),
+                       map_location=lambda storage, location: storage)
+        )
+
+        fc_layer = helpers.load_torch_weights(
+            fc_layer,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'cnn_cls_drp.pytorch'),
+                       map_location=lambda storage, location: storage)
+        )
     if flag == 'training':
         dft_analysis = dft_analysis.cuda()
         mel_analysis = mel_analysis.cuda()

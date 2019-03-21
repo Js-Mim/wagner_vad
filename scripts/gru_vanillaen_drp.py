@@ -50,19 +50,38 @@ def build_model(flag='training'):
 
     if flag == 'testing':
         print('--- Loading Model ---')
-        pcen.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                     'vanillaen_pcen_bs_drp.pytorch'),
-                                        map_location=lambda storage, location: storage))
+        pcen = helpers.load_torch_weights(
+            pcen,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'vanillaen_pcen_bs_drp.pytorch'),
+                       map_location={'cuda:0': 'cpu'}
+                       )
+        )
 
-        gru_enc.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                        'vanillaen_gru_enc_bs_drp.pytorch'),
-                                           map_location=lambda storage, location: storage))
-        gru_dec.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                        'vanillaen_gru_dec_bs_drp.pytorch'),
-                                           map_location=lambda storage, location: storage))
-        fc_layer.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
-                                                         'vanillaen_cls_bs_drp.pytorch'),
-                                            map_location=lambda storage, location: storage))
+        gru_enc = helpers.load_torch_weights(
+            gru_enc,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'vanillaen_gru_enc_bs_drp.pytorch'),
+                       map_location={'cuda:0': 'cpu'}
+                       )
+        )
+
+        gru_dec = helpers.load_torch_weights(
+            gru_dec,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'vanillaen_gru_dec_bs_drp.pytorch'),
+                       map_location={'cuda:0': 'cpu'}
+                       )
+        )
+
+        fc_layer = helpers.load_torch_weights(
+            gru_dec,
+            torch.load(os.path.join('results', exp_settings['split_name'],
+                                    'vanillaen_cls_bs_drp.pytorch'),
+                       map_location={'cuda:0': 'cpu'}
+                       )
+        )
+
     if flag == 'training':
         dft_analysis = dft_analysis.cuda()
         mel_analysis = mel_analysis.cuda()

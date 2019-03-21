@@ -11,7 +11,8 @@ from tools import io_methods as io
 from tools.experiment_settings import exp_settings
 
 # definitions
-path_to_wagner = '/mnt/IDMT-WORKSPACE/DATA-STORE/mis/Datasets/WagnerLyrics/'
+#path_to_wagner = '/mnt/IDMT-WORKSPACE/DATA-STORE/mis/Datasets/WagnerLyrics/'
+path_to_wagner = '/Users/simimilakis/Desktop/WagnerLyrics'
 annotated_sheet = 'Annotations_SingingVoice_SheetMusic'
 human_annotations = 'Annotations_SingingVoice_Audio'
 wav_files = 'wav_22050_stereo'
@@ -236,6 +237,14 @@ def build_wagner_vocabulary(data_annotations, keys_list):
     indx2word = {indx: w for (indx, w) in enumerate(vocab)}
 
     return word2indx, indx2word
+
+
+def load_torch_weights(model_block, torch_load):
+    model_dict = model_block.state_dict()
+    pretrained_dict = {k: v for k, v in torch_load.items() if k in model_dict}
+    model_dict.update(pretrained_dict)
+    model_block.load_state_dict(model_dict, strict=False)
+    return model_block
 
 
 def gimme_batches(batch_indx, data_points, x_in, y_out):

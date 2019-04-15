@@ -11,8 +11,7 @@ from tools import io_methods as io
 from tools.experiment_settings import exp_settings
 
 # definitions
-#path_to_wagner = '/mnt/IDMT-WORKSPACE/DATA-STORE/mis/Datasets/WagnerLyrics/'
-path_to_wagner = '/Users/simimilakis/Desktop/WagnerLyrics'
+path_to_wagner = '/mnt/IDMT-WORKSPACE/DATA-STORE/mis/Datasets/WagnerLyrics/'
 annotated_sheet = 'Annotations_SingingVoice_SheetMusic'
 human_annotations = 'Annotations_SingingVoice_Audio'
 wav_files = 'wav_22050_stereo'

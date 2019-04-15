@@ -20,6 +20,7 @@ from nn_modules import cls_fe_dft, cls_pcen, cls_grus, cls_fnns, cls_fe_label_sm
 from tools import helpers, visualize
 from torch.optim.lr_scheduler import StepLR
 from tools.experiment_settings import exp_settings
+from torch.nn import functional as F
 
 
 def build_model(flag='training'):
@@ -50,37 +51,19 @@ def build_model(flag='training'):
 
     if flag == 'testing':
         print('--- Loading Model ---')
-        pcen = helpers.load_torch_weights(
-            pcen,
-            torch.load(os.path.join('results', exp_settings['split_name'],
-                                    'vanillaen_pcen_bs_drp.pytorch'),
-                       map_location={'cuda:0': 'cpu'}
-                       )
-        )
+        pcen.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
+                                                     'vanillaen_pcen_bs_drp.pytorch'),
+                                        map_location=lambda storage, location: storage))
 
-        gru_enc = helpers.load_torch_weights(
-            gru_enc,
-            torch.load(os.path.join('results', exp_settings['split_name'],
-                                    'vanillaen_gru_enc_bs_drp.pytorch'),
-                       map_location={'cuda:0': 'cpu'}
-                       )
-        )
-
-        gru_dec = helpers.load_torch_weights(
-            gru_dec,
-            torch.load(os.path.join('results', exp_settings['split_name'],
-                                    'vanillaen_gru_dec_bs_drp.pytorch'),
-                       map_location={'cuda:0': 'cpu'}
-                       )
-        )
-
-        fc_layer = helpers.load_torch_weights(
-            gru_dec,
-            torch.load(os.path.join('results', exp_settings['split_name'],
-                                    'vanillaen_cls_bs_drp.pytorch'),
-                       map_location={'cuda:0': 'cpu'}
-                       )
-        )
+        gru_enc.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
+                                                        'vanillaen_gru_enc_bs_drp.pytorch'),
+                                           map_location=lambda storage, location: storage))
+        gru_dec.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
+                                                        'vanillaen_gru_dec_bs_drp.pytorch'),
+                                           map_location=lambda storage, location: storage))
+        fc_layer.load_state_dict(torch.load(os.path.join('results', exp_settings['split_name'],
+                                                         'vanillaen_cls_bs_drp.pytorch'),
+                                            map_location=lambda storage, location: storage))
 
     if flag == 'training':
         dft_analysis = dft_analysis.cuda()
@@ -304,6 +287,9 @@ def perform_testing():
         y_d_p = y_d_p.reshape(1, d_p_length_samples)
         x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p), requires_grad=False).float().detach()
         y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p), requires_grad=False).float().detach()
+        if torch.has_cudnn:
+            x_cuda = x_cuda.cuda()
+            y_cuda = y_cuda.cuda()
 
         # Forward analysis pass: Input data
         x_real, x_imag = nn_list[0].forward(x_cuda)
@@ -318,32 +304,26 @@ def perform_testing():
         h_enc = nn_list[3].forward(mel_mag_pr)
         h_dec = nn_list[4].forward(h_enc)
         # Classifier
-        mel_filt, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
+        _, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
         vad_prob = sigmoid(vad_prob)
-        vad_prob = vad_prob.gt(0.51).float().data.cpu().numpy()[0, :, 0]
 
-        # Target data preparation
-        y_true = nn_list[6].forward(y_cuda).detach()
-        vad_true = y_true.gt(0.51).float().data.cpu().numpy()[0, :, 0]
+        # Up-sample the labels to the time-domain
+        vad_prob_us = F.conv_transpose1d(torch.transpose(vad_prob, 1, 2),
+                                         nn_list[6].conv_smooth.weight * exp_settings['hop_size'],
+                                         None, exp_settings['hop_size'],
+                                         padding=exp_settings['ft_size'] - exp_settings['hop_size'],
+                                         dilation=1, groups=1).gt(0.50).float().data.cpu().numpy()
 
-        """
-        # A hasty example for plotting some of the results
-        if vad_true.mean() >= 0.55:
-            import matplotlib.pyplot as plt
-            plt.figure()
-            plt.imshow(mel_mag.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-            plt.figure()
-            plt.imshow(mel_mag_pr.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-            plt.figure()
-            plt.imshow(mel_filt.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-            plt.show()
-        """
+        vad_true = y_cuda.float().data.cpu().numpy()[0, :]
+
+        vad_prob_us = vad_prob_us[0, 0, exp_settings['hop_size']:exp_settings['hop_size'] +
+                                                                 exp_settings['fs'] * exp_settings['d_p_length']]
 
         if data_point == 0:
-            out_prob = vad_prob
+            out_prob = vad_prob_us
             out_true_prob = vad_true
         else:
-            out_prob = np.hstack((out_prob, vad_prob))
+            out_prob = np.hstack((out_prob, vad_prob_us))
             out_true_prob = np.hstack((out_true_prob, vad_true))
 
     res = prf(out_true_prob, out_prob, average='binary')

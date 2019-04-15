@@ -23,6 +23,7 @@ from torch.optim.lr_scheduler import StepLR
 from tools.experiment_settings import exp_settings
 from matplotlib import pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
+from torch.nn import functional as F
 
 
 def build_model(flag='training'):
@@ -286,6 +287,9 @@ def perform_testing():
         y_d_p = y_d_p.reshape(1, d_p_length_samples)
         x_cuda = torch.autograd.Variable(torch.from_numpy(x_d_p), requires_grad=False).float().detach()
         y_cuda = torch.autograd.Variable(torch.from_numpy(y_d_p), requires_grad=False).float().detach()
+        if torch.has_cudnn:
+            x_cuda = x_cuda.cuda()
+            y_cuda = y_cuda.cuda()
 
         # Forward analysis pass: Input data
         x_real, x_imag = nn_list[0].forward(x_cuda)
@@ -300,33 +304,26 @@ def perform_testing():
         h_enc = nn_list[3].forward(mel_mag_pr)
         h_dec = nn_list[4].forward(h_enc)
         # Classifier
-        mel_filt, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
+        _, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
         vad_prob = sigmoid(vad_prob)
-        vad_prob = vad_prob.gt(0.55).float().data.cpu().numpy()[0, :, 0]
 
-        # Target data preparation
-        y_true = nn_list[6].forward(y_cuda).detach()
-        vad_true = y_true.gt(0.5).float().data.cpu().numpy()[0, :, 0]
+        # Up-sample the labels to the time-domain
+        vad_prob_us = F.conv_transpose1d(torch.transpose(vad_prob, 1, 2),
+                                         nn_list[6].conv_smooth.weight * exp_settings['hop_size'],
+                                         None, exp_settings['hop_size'],
+                                         padding=exp_settings['ft_size'] - exp_settings['hop_size'],
+                                         dilation=1, groups=1).gt(0.50).float().data.cpu().numpy()
 
-        """
-        # A hasty example for plotting some of the results
-        plt.figure()
-        plt.plot(y_d_p[0, :])
-        plt.figure()
-        plt.plot(vad_true)
-        plt.plot(vad_prob)
-        plt.figure()
-        plt.imshow(mel_mag.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-        plt.figure()
-        plt.imshow(mel_filt.data.cpu().numpy()[0, :, :].T, aspect='auto', origin='lower')
-        plt.show()
-        """
+        vad_true = y_cuda.float().data.cpu().numpy()[0, :]
+
+        vad_prob_us = vad_prob_us[0, 0, exp_settings['hop_size']:exp_settings['hop_size'] +
+                                  exp_settings['fs'] * exp_settings['d_p_length']]
 
         if data_point == 0:
-            out_prob = vad_prob
+            out_prob = vad_prob_us
             out_true_prob = vad_true
         else:
-            out_prob = np.hstack((out_prob, vad_prob))
+            out_prob = np.hstack((out_prob, vad_prob_us))
             out_true_prob = np.hstack((out_true_prob, vad_true))
 
     res = prf(out_true_prob, out_prob, average='binary')

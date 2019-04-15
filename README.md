@@ -59,26 +59,26 @@ should be used instead.
 3. Elementary Statistics
 ⋅⋅ Just for the sake of checking on the validity of the results of each model and experiment, below you can find the percentage
 of singing voice activity versus the percentage of the non-singing voice time-frames.
-In the test set **~51.90%** of the time-frames contain operatic **singing voice**, whereas **~48.10%** contains **non-singing voice**
+In the test set **~53.93%** of the time-frames contain operatic **singing voice**, whereas **~46.07%** contains **non-singing voice**
 parts. From a first view, the dataset looks very balanced, and thus the following results are significant in
 detecting singing voice versus non-singing voice.
 4. Experimental Results
 
 ### **split_a**
-| Metric         | 0μ-CNN    | PCEN    | LR-PCEN  |
-| ---------------|:---------:|:-------:|:--------:|
-| Precision      | 0.888     | 0.892   | 0.910    |
-| Recall         | 0.885     | 0.903   | 0.902    |
-| F1-Score       | 0.887     | 0.898   | 0.906    |
-| Error-rate (%) | 11.705 %  | 10.62%  | 09.65%   |
+| Metric         | 0μ-CNN    | PCEN    | LR-PCEN  |  ORACLE  |
+| ---------------|:---------:|:-------:|:--------:|:--------:|
+| Precision      | 0.890     | 0.900   | 0.910    |0.991     |
+| Recall         | 0.890     | 0.908   | 0.907    |0.990     |
+| F1-Score       | 0.890     | 0.904   | 0.909    |0.990     |
+| Error-rate (%) | 11.866 %  | 10.36%  | 09.83%   |1.030%    |
 
 ### **split_b**
-| Metric         | 0μ-CNN    | PCEN    | LR-PCEN  |
-| ---------------|:---------:|:-------:|:--------:|
-| Precision      | 0.840     | 0.849   | 0.888    |
-| Recall         | 0.857     | 0.770   | 0.752    |
-| F1-Score       | 0.849     | 0.808   | 0.814    |
-| Error-rate (%) | 15.839 %  | 19.01%  | 17.76%   |
+| Metric         | 0μ-CNN    | PCEN    | LR-PCEN  |  ORACLE  |
+| ---------------|:---------:|:-------:|:--------:|:--------:|
+| Precision      | 0.842     | 0.857   | 0.888    |0.991     |
+| Recall         | 0.858     | 0.774   | 0.772    |0.990     |
+| F1-Score       | 0.850     | 0.813   | 0.826    |0.990     |
+| Error-rate (%) | 16.282 %  | 19.14%  | 17.51%   |1.030%    |
 
 
 

@@ -71,6 +71,13 @@ def build_model(flag='training'):
         gru_enc = gru_enc.cuda()
         gru_dec = gru_dec.cuda()
         fc_layer = fc_layer.cuda()
+    else:
+        dft_analysis = dft_analysis.cpu()
+        mel_analysis = mel_analysis.cpu()
+        cnn_block = cnn_block.cpu()
+        gru_enc = gru_enc.cpu()
+        gru_dec = gru_dec.cpu()
+        fc_layer = fc_layer.cpu()
 
     return dft_analysis, mel_analysis, cnn_block, gru_enc, gru_dec, fc_layer, label_conv
 

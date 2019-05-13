@@ -295,7 +295,7 @@ def perform_testing():
     print('Non-singing voice frames percentage %2f' % non_voice_regions_percentage)
 
     print('-- Saving Results --')
-    np.save(os.path.join('results', exp_settings['split_name'], '0m_cnn_results.npy'), out_prob)
+    np.save(os.path.join('results', exp_settings['split_name'], 'schl_model_results.npy'), out_prob)
     np.save(os.path.join('results', exp_settings['split_name'], 'vad_true_targets.npy'), out_true_prob)
 
     return None
@@ -307,13 +307,9 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(218)
 
     # Training
-    perform_training()
+    #perform_training()
 
     # Testing
-    #perform_testing()
-
-    # Clustering visualization
-    #perform_cluster_visualization()
-
+    perform_testing()
 
 # EOF

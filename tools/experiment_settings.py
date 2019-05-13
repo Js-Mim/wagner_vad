@@ -4,8 +4,8 @@ __copyright__ = 'Fraunhofer IDMT'
 
 import torch
 
-torch.has_cudnn = False
-torch.set_default_tensor_type('torch.FloatTensor')
+torch.has_cudnn = True
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 exp_settings = {
     'fs': 22050,                       # Sampling frequency

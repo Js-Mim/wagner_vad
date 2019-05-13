@@ -18,9 +18,9 @@ exp_settings = {
     'batch_size': 64,                  # Batch size
     'T': 134,                          # Analysis time-frames <-- pre-defined atm :(
     'epochs': 100,                     # Number of iterations
-    'split_name': 'split_b',           # Data split identifier for saving the results under different folder
-    'split_training_indx': 1,          # Integer indicating up to which opera will be used for training (#2: uses Barenboi-Kupfer and Haitink)
-    'split_validation_indx': 1,        # Integer indicating the opera used for validation (#2: uses Karajan for validation)
+    'split_name': 'split_a',           # Data split identifier for saving the results under different folder
+    'split_training_indx': 2,          # Integer indicating up to which opera will be used for training (#2: uses Barenboi-Kupfer and Haitink)
+    'split_validation_indx': 2,        # Integer indicating the opera used for validation (#2: uses Karajan for validation)
     'd_p_length': 3,                   # Length of each data point (spectral patch) in seconds
     'drp_rate': 0.2,                   # Drop-out rate
     'learning_rate_drop': 0.8,         # Factor for decreasing the learning rate

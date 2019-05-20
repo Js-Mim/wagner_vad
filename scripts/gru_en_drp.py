@@ -455,7 +455,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(218)
 
     # Training
-    #perform_training()
+    perform_training()
 
     # Testing
     perform_testing()

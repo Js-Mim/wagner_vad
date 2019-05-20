@@ -5,6 +5,7 @@ __copyright__ = 'Fraunhofer IDMT'
 # imports
 import torch
 import torch.nn as nn
+from tools.experiment_settings import exp_settings
 
 
 class ClassLabelSmoother(nn.Module):
@@ -16,9 +17,12 @@ class ClassLabelSmoother(nn.Module):
         self.time_domain_samples = None
         self.sz = ft_size
         self.hop = hop_size
+        self.end = exp_settings['fs'] * exp_settings['d_p_length']
 
         # 1D CNN
-        self.conv_smooth = nn.Conv1d(1, 1, self.sz, padding=self.sz, stride=self.hop, bias=False)
+        self.conv_smooth = nn.Conv1d(1, 1, self.sz, padding=self.sz,
+                                     stride=self.hop, bias=False,
+                                     dilation=1, groups=1)
 
         # Initialization
         self.initialize()
@@ -40,6 +44,7 @@ class ClassLabelSmoother(nn.Module):
                 smooth_labels.append(self.conv_smooth(curr_class_signal).transpose(1, 2).gt(0.55).float())
 
             smooth_labels = torch.cat(smooth_labels, dim=2)
+
         return smooth_labels
 
 

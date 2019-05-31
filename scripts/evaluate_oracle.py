@@ -10,13 +10,12 @@ __copyright__ = 'Fraunhofer IDMT'
 
 # imports
 import numpy as np
-import os
 from sklearn.metrics import precision_recall_fscore_support as prf
 from tools import helpers
-from tools.experiment_settings import exp_settings
 
 
 def perform_testing():
+
     print('--- Performing Oracle Evaluation ---')
     testing_data_dict = helpers.csv_to_dict(training=False)
     keys = list(testing_data_dict.keys())

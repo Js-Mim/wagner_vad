@@ -261,25 +261,17 @@ def perform_testing():
         mel_mag = torch.autograd.Variable(nn_list[1].forward(mag).data, requires_grad=False)
 
         # Learned normalization
-        vad_prob = sigmoid(nn_list[2].forward(mel_mag))
+        vad_prob = sigmoid(nn_list[2].forward(mel_mag)).gt(0.50).float().data.cpu()[0, :, 0]
 
-        # Up-sample the labels to the time-domain
-        vad_prob_us = F.conv_transpose1d(torch.transpose(vad_prob, 1, 2),
-                                         nn_list[3].conv_smooth.weight * exp_settings['hop_size'],
-                                         None, exp_settings['hop_size'],
-                                         padding=exp_settings['ft_size'] - exp_settings['hop_size'],
-                                         dilation=1, groups=1).gt(0.50).float().data.cpu().numpy()
-
-        vad_true = y_cuda.float().data.cpu().numpy()[0, :]
-
-        vad_prob_us = vad_prob_us[0, 0, exp_settings['hop_size']:exp_settings['hop_size'] +
-                                                                 exp_settings['fs'] * exp_settings['d_p_length']]
+        # Target data preparation
+        y_true = nn_list[3].forward(y_cuda)
+        vad_true = y_true.gt(0.50).float().data.cpu().numpy()[0, :, 0]
 
         if data_point == 0:
-            out_prob = vad_prob_us
+            out_prob = vad_prob
             out_true_prob = vad_true
         else:
-            out_prob = np.hstack((out_prob, vad_prob_us))
+            out_prob = np.hstack((out_prob, vad_prob))
             out_true_prob = np.hstack((out_true_prob, vad_true))
 
     res = prf(out_true_prob, out_prob, average='binary')
@@ -293,7 +285,6 @@ def perform_testing():
     print('Error: %2f' % cls_error)
     print('Singing voice frames percentage %2f' % voice_regions_percentage)
     print('Non-singing voice frames percentage %2f' % non_voice_regions_percentage)
-
     print('-- Saving Results --')
     np.save(os.path.join('results', exp_settings['split_name'], 'schl_model_results.npy'), out_prob)
     np.save(os.path.join('results', exp_settings['split_name'], 'vad_true_targets.npy'), out_true_prob)

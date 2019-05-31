@@ -317,25 +317,18 @@ def perform_testing():
         h_dec = nn_list[4].forward(h_enc)
         # Classifier
         _, vad_prob = nn_list[5].forward(h_dec, mel_mag_pr)
-        vad_prob = sigmoid(vad_prob)
+        vad_prob = sigmoid(vad_prob).gt(0.50).float().data.cpu().numpy()[0, :, 0]
 
         # Up-sample the labels to the time-domain
-        vad_prob_us = F.conv_transpose1d(torch.transpose(vad_prob, 1, 2),
-                                         nn_list[6].conv_smooth.weight * exp_settings['hop_size'],
-                                         None, exp_settings['hop_size'],
-                                         padding=exp_settings['ft_size'] - exp_settings['hop_size'],
-                                         dilation=1, groups=1).gt(0.50).float().data.cpu().numpy()
-
-        vad_true = y_cuda.float().data.cpu().numpy()[0, :]
-
-        vad_prob_us = vad_prob_us[0, 0, exp_settings['hop_size']:exp_settings['hop_size'] +
-                                                                 exp_settings['fs'] * exp_settings['d_p_length']]
+        # Target data preparation
+        y_true = nn_list[6].forward(y_cuda).detach()[0, :, 0]
+        vad_true = y_true.gt(0.51).float().data.cpu().numpy()
 
         if data_point == 0:
-            out_prob = vad_prob_us
+            out_prob = vad_prob
             out_true_prob = vad_true
         else:
-            out_prob = np.hstack((out_prob, vad_prob_us))
+            out_prob = np.hstack((out_prob, vad_prob))
             out_true_prob = np.hstack((out_true_prob, vad_true))
 
     res = prf(out_true_prob, out_prob, average='binary')
@@ -368,8 +361,6 @@ if __name__ == "__main__":
 
     # Testing
     perform_testing()
-
-
 
 
 # EOF

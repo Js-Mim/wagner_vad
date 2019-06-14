@@ -23,7 +23,6 @@ from torch.optim.lr_scheduler import StepLR
 from tools.experiment_settings import exp_settings
 from matplotlib import pylab as plt
 from mpl_toolkits.mplot3d import Axes3D
-from torch.nn import functional as F
 
 
 def build_model(flag='training'):
@@ -447,7 +446,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(218)
 
     # Training
-    #perform_training()
+    perform_training()
 
     # Testing
     perform_testing()

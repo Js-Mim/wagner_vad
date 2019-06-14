@@ -12,6 +12,7 @@ from tools.experiment_settings import exp_settings
 
 # definitions
 path_to_wagner = '/mnt/IDMT-WORKSPACE/DATA-STORE/mis/Datasets/WagnerLyrics/'
+path_to_wagner_full_ring = '/mnt/IDMT-WORKSPACE/DATA-STORE/mis/Datasets/WagnerLyrics-FullRing/'
 annotated_sheet = 'Annotations_SingingVoice_SheetMusic'
 human_annotations = 'Annotations_SingingVoice_Audio'
 wav_files = 'wav_22050_stereo'
@@ -36,7 +37,9 @@ def csv_to_dict(training=True):
         path_to_csv = os.path.join(path_to_wagner, annotated_sheet)
     else:
         path_to_csv = os.path.join(path_to_wagner, human_annotations)
+
     wav_files_list = os.listdir(os.path.join(path_to_wagner, wav_files))
+
     csv_files = os.listdir(path_to_csv)
 
     # Punctuation
@@ -53,6 +56,7 @@ def csv_to_dict(training=True):
     for item in os.listdir(path_to_csv):
         if item.endswith('.csv'):
             # Find out the exact wav file path based on the conductors
+            path_to_wav = []
             for wav_file in wav_files_list:
                 stripped_file_name = re.match(r"([a-z]+)([0-9]+)", wav_file.split('_')[2], re.I).groups()[0]
 
@@ -63,7 +67,7 @@ def csv_to_dict(training=True):
                 path_to_wav = []
                 print('Audio file missing for annotation: ' + item)
 
-            with open(os.path.join(path_to_csv, item), 'r', encoding='utf-8') as csvfile:
+            with open(os.path.join(path_to_csv, item), 'r', encoding='ISO-8859-1') as csvfile:
                 csvreader = csv.reader(csvfile, delimiter='/')
                 next(csvreader, None)
                 # Lists
@@ -236,14 +240,6 @@ def build_wagner_vocabulary(data_annotations, keys_list):
     indx2word = {indx: w for (indx, w) in enumerate(vocab)}
 
     return word2indx, indx2word
-
-
-def load_torch_weights(model_block, torch_load):
-    model_dict = model_block.state_dict()
-    pretrained_dict = {k: v for k, v in torch_load.items() if k in model_dict}
-    model_dict.update(pretrained_dict)
-    model_block.load_state_dict(model_dict, strict=False)
-    return model_block
 
 
 def gimme_batches(batch_indx, data_points, x_in, y_out):

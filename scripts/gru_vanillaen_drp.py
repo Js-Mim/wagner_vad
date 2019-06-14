@@ -20,7 +20,6 @@ from nn_modules import cls_fe_dft, cls_pcen, cls_grus, cls_fnns, cls_fe_label_sm
 from tools import helpers, visualize
 from torch.optim.lr_scheduler import StepLR
 from tools.experiment_settings import exp_settings
-from torch.nn import functional as F
 
 
 def build_model(flag='training'):
